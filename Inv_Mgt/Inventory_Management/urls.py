@@ -8,10 +8,13 @@ urlpatterns = [
 
     path('register_business/', BusinessCreateView.as_view(), name='register_business'),
     path('list_business/', ListBusiness.as_view(), name='list_business'),
+    #update business
+    #delete business
 
     path('create_supplier/', SupplierCreateAPIView.as_view(), name='create_supplier'),
     # path('del_suppliers/', SupplierDeleteAPIView.as_view(), name='supplier_delete'),
     # path('all_suppliers/', ListSupplier.as_view(), name='suppliers_list'),
+    #update supplier
     # path('suppliers/', SearchSupplierAPIView.as_view(), name='suppliers-list'),
 
 ]
