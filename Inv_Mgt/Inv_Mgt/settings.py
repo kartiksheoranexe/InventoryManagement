@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'Inventory_Management',
     'phone_field',
     'knox',
+    'rest_framework',
 ]
 
 REST_FRAMEWORK = {
