@@ -1,5 +1,5 @@
 from django.urls import path
-from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView
+from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView, SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -10,8 +10,13 @@ urlpatterns = [
     path('list_business/', ListBusiness.as_view(), name='list_business'),
 
     path('create_supplier/', SupplierCreateAPIView.as_view(), name='create_supplier'),
-    # path('del_suppliers/', SupplierDeleteAPIView.as_view(), name='supplier_delete'),
-    # path('all_suppliers/', ListSupplier.as_view(), name='suppliers_list'),
-    # path('suppliers/', SearchSupplierAPIView.as_view(), name='suppliers-list'),
+    path('update_supplier/', SupplierUpdateAPIView.as_view(), name='update_supplier'),
+    path('del_suppliers/', SupplierDeleteAPIView.as_view(), name='supplier_delete'),
+    path('all_suppliers/', ListBusinessSuppliers.as_view(), name='suppliers_list'),
+    path('suppliers/', SearchSupplierAPIView.as_view(), name='suppliers-list'),
+
+    #item apis
+
+    #excel scrapping api
 
 ]
