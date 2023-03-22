@@ -1,5 +1,5 @@
 from django.contrib import admin
-from Inventory_Management.models import CustomUser, Business, Supplier
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails
 
 # Register your models here.
 
@@ -12,6 +12,10 @@ class BusinessAdmin(admin.ModelAdmin):
 class SupplierAdmin(admin.ModelAdmin):
     list_display = ['business', 'category', 'distributor_name', 'created_date']
 
+class ItemDetailsAdmin(admin.ModelAdmin):
+    list_display = ['supplier', 'item_name', 'item_type', 'created_at']
+
 admin.site.register(CustomUser, CustomUserAdmin),
 admin.site.register(Business, BusinessAdmin),
 admin.site.register(Supplier, SupplierAdmin),
+admin.site.register(ItemDetails, ItemDetailsAdmin),

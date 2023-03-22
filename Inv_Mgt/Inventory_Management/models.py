@@ -1,7 +1,6 @@
-from django.contrib.auth.models import AbstractUser
-from phone_field import PhoneField
-
 from django.db import models
+from phone_field import PhoneField
+from django.contrib.auth.models import AbstractUser
 
 # Create your models here.
 GENDER_CHOICES = [
@@ -15,6 +14,13 @@ BUSINESS_TYPE = [
     ('ST', 'Stationary'),
     ('GR', 'Grocery'),
     ('RS', 'Restaurant'),
+]
+
+UNIT_CHOICES = [
+        ('kg', 'Kilogram'),
+        ('gm', 'Gram'),
+        ('l', 'Liter'),
+        ('ml', 'Milliliter'),
 ]
 
 class CustomUser(AbstractUser):
@@ -52,4 +58,20 @@ class Supplier(models.Model):
         ]
 
     def __str__(self):
-        return self.business.business_name + "-" + self.distributor_name
+        return self.business.business_name + "-" + self.category + "-" + self.distributor_name
+
+class ItemDetails(models.Model):
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+    item_name = models.CharField(max_length=255)
+    item_type = models.CharField(max_length=255)
+    size = models.FloatField(default=0)
+    unit_of_measurement = models.CharField(max_length=2, choices=UNIT_CHOICES)
+    quantity = models.IntegerField(default=0)
+    alert_quantity = models.IntegerField(default=0)
+    additional_info = models.JSONField(blank=True, null=True)
+    imported_date = models.DateField(null=True, blank=True)
+    created_at = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return self.supplier.category + "-" + self.supplier.distributor_name + "-" + self.item_name
+
