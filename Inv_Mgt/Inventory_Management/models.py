@@ -42,6 +42,7 @@ class Business(models.Model):
     business_state = models.CharField(max_length=150)
     business_country = models.CharField(max_length=150)
     business_phone = PhoneField(help_text='Contact phone number', null=True)
+    business_email = models.EmailField(unique=True, null=True)
 
     def __str__(self):
         return self.owner.username + "-" + self.business_name
