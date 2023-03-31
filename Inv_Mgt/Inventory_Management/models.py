@@ -10,10 +10,10 @@ GENDER_CHOICES = [
 ]
 
 BUSINESS_TYPE = [
-    ('MD', 'Medicine'),
-    ('ST', 'Stationary'),
-    ('GR', 'Grocery'),
-    ('RS', 'Restaurant'),
+    ('Medicine', 'Medicine'),
+    ('Stationary', 'Stationary'),
+    ('Grocery', 'Grocery'),
+    ('Restaurant', 'Restaurant'),
 ]
 
 UNIT_CHOICES = [
@@ -36,7 +36,7 @@ class CustomUser(AbstractUser):
 class Business(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     business_name = models.CharField(max_length=150, unique=True)
-    business_type = models.CharField(max_length=2, choices=BUSINESS_TYPE, null=True)
+    business_type = models.CharField(max_length=100, choices=BUSINESS_TYPE, null=True)
     business_address = models.CharField(max_length=300)
     business_city = models.CharField(max_length=150)
     business_state = models.CharField(max_length=150)

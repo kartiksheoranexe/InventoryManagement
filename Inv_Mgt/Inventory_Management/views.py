@@ -283,7 +283,7 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ItemAlertListAPIView(generics.GenericAPIView):
-    serializer_class = ItemDetailsSearchSerializer
+    serializer_class = ItemDetailsSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -310,6 +310,30 @@ class ItemAlertListAPIView(generics.GenericAPIView):
         except Exception as e:
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+class ItemAlertCountAPIView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = self.request.user
+        business_name = request.data.get('business_name')
+
+        try:
+            business = Business.objects.get(owner=user, business_name=business_name)
+            suppliers = Supplier.objects.filter(business=business)
+
+            alert_items_count = 0
+            for supplier in suppliers:
+                queryset = ItemDetails.objects.filter(supplier=supplier, quantity__lte=F('alert_quantity'))
+                alert_items_count += queryset.count()
+
+            response_data = {"alert_items_count": alert_items_count}
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            response_data = {"message": str(e)}
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        
 
 class UpdateItemQuantityAPIView(generics.UpdateAPIView):
     queryset = ItemDetails.objects.all()
