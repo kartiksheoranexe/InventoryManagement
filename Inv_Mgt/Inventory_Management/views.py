@@ -406,22 +406,23 @@ class ImportExcelDataAPIView(generics.CreateAPIView):
                 business = Business.objects.get(business_name=business_name)
                 supplier, created = Supplier.objects.get_or_create(business=business, category=category, distributor_name=distributor_name)
 
-                existing_item = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom, imported_date=imported_date).first()
+                existing_item = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom).first()
 
                 if existing_item:
                     existing_item.quantity = quantity
                     existing_item.alert_quantity = alert_quantity
                     existing_item.additional_info.update(additional_info)
+                    existing_item.imported_date = imported_date
                     existing_item.save()
 
                     serialized_data = ItemDetailsSerializer(existing_item).data
                     updated_rows += 1
-
                 else:
                     item = ItemDetails.objects.create(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom, quantity=quantity, alert_quantity=alert_quantity, additional_info=additional_info, imported_date=imported_date)
 
                     serialized_data = ItemDetailsSerializer(item).data
                     added_rows += 1
+                    print(added_rows, updated_rows)
 
             return Response({"status": "success", "message": "Data imported successfully.", "added_rows": added_rows, "updated_rows": updated_rows}, status=status.HTTP_201_CREATED)
 
