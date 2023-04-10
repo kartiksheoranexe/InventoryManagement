@@ -36,7 +36,7 @@ class ItemDetailsSearchSerializer(serializers.ModelSerializer):
         model = ItemDetails
         fields = ['id', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'additional_info', 'supplier']
 
-class ItemDetailsSerializer(serializers.ModelSerializer):
+class ItemDetailAlertSerializer(serializers.ModelSerializer):
     supplier = SupplierSerializer()
 
     class Meta:

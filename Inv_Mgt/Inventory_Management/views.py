@@ -13,7 +13,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
 from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer
+from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer
 
 
 # Create your views here.
@@ -158,8 +158,8 @@ class ListBusinessSuppliers(generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         user = self.request.user
-        business_name = request.data['business']
-        if user:
+        business_name = request.query_params.get('business')
+        if user and business_name:
             business = Business.objects.get(owner=user, business_name=business_name)
             supplier = Supplier.objects.filter(business=business)
             serializer = SupplierSerializer(supplier, many=True)
@@ -283,7 +283,7 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ItemAlertListAPIView(generics.GenericAPIView):
-    serializer_class = ItemDetailsSerializer
+    serializer_class = ItemDetailAlertSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
