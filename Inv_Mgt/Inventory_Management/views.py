@@ -1,9 +1,19 @@
 import json
+import base64
+import qrcode
 import pandas as pd
+from uuid import uuid4
+from io import BytesIO
+from urllib.parse import quote
+from datetime import datetime
+from django.http import JsonResponse
+from django.http.multipartparser import MultiPartParser
+from django.http import HttpResponse
 from django.db.models import Q, F
 from django.shortcuts import render
 from django.db import IntegrityError
 from django.contrib.auth import authenticate
+from django.core.files.base import ContentFile
 
 from knox.models import AuthToken
 from rest_framework import status, filters
@@ -12,8 +22,8 @@ from rest_framework.response import Response
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
+from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer
 
 
 # Create your views here.
@@ -335,6 +345,39 @@ class ItemAlertCountAPIView(generics.GenericAPIView):
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
         
 
+class GenerateQRCodeAPIView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        quantity_delta = request.data.get('quantity_delta')
+        price = request.data.get('price')
+
+        if quantity_delta < 0:  # Item is being sold
+            upi_details = UpiDetails.objects.get(user=request.user)
+
+            # Calculate the total price
+            total_price = price * abs(quantity_delta)
+            # transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
+            payee_name = quote(upi_details.payee_name)
+
+            # Generate the UPI QR code
+            transaction_note = f"Purchase of Item x {quantity_delta}"  # example transaction note
+            upi_payload = f"upi://pay?pa={upi_details.payee_vpa}&pn={payee_name}&tn={transaction_note}&am={total_price}&cu=INR"
+            qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+            qr.add_data(upi_payload)
+            qr.make(fit=True)
+            qr_code_img = qr.make_image(fill_color="black", back_color="white")
+
+            # Save the QR code image to a BytesIO buffer
+            buffered = BytesIO()
+            qr_code_img.save(buffered, format="PNG")
+            buffered.seek(0)  # Move the buffer position to the beginning
+
+            response = HttpResponse(buffered, content_type='image/png')
+            return response
+        else:
+            return Response({"message": "No item sold."}, status=status.HTTP_400_BAD_REQUEST)
+
 class UpdateItemQuantityAPIView(generics.UpdateAPIView):
     queryset = ItemDetails.objects.all()
     serializer_class = ItemDetailsSerializer
@@ -353,29 +396,132 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
 
         try:
             user = request.user
+            upi_details = UpiDetails.objects.get(user=request.user)
             business = Business.objects.get(owner=user, business_name=business_name)
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
             item = ItemDetails.objects.get(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
 
+            if quantity_delta < 0:  # Item is being sold
+                if item.quantity + quantity_delta < 0:
+                    response_data = {
+                        "message": "Insufficient quantity in stock.",
+                    }
+                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Calculate the total price
+                total_price = item.price * abs(quantity_delta)
+
+                # Generate transaction_id and transaction_ref_id
+                transaction_id = f"txn-{uuid4()}"
+                transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
+
+            # Update the item quantity
             if additional_info:
                 for key, value in additional_info.items():
                     if item.additional_info and key in item.additional_info and item.additional_info[key] == value:
                         item.quantity += quantity_delta
                         item.save()
-                        serializer = self.get_serializer(item)
-                        return Response(serializer.data, status=status.HTTP_200_OK)
+
+                        if quantity_delta < 0:  # Item is being sold
+                            # Create a new transaction object
+                            transaction = Transaction.objects.create(
+                                upi_details=upi_details,
+                                transaction_id=transaction_id,
+                                transaction_ref_id=transaction_ref_id,
+                                amount=total_price,
+                                item_id = item.id,
+                                unit = abs(quantity_delta),
+                                status='pending',
+                            )
+
+                            response_data = {
+                                "message": "QR code generated successfully.",
+                                "quantity_delta": quantity_delta,
+                                "total_price": total_price,
+                                "transaction_id": transaction_id
+                            }
+                            return Response(response_data, status=status.HTTP_200_OK)
+
+                        else:  # Item is being added
+                            response_data = {
+                                "message": "Item quantity updated successfully.",
+                                "updated_quantity": item.quantity,
+                            }
+                            return Response(response_data, status=status.HTTP_200_OK)
+
                     else:
                         return Response({"message": "Additional info doesn't match."}, status=status.HTTP_400_BAD_REQUEST)
 
             else:
                 item.quantity += quantity_delta
                 item.save()
-                serializer = self.get_serializer(item)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+
+                if quantity_delta < 0:  # Item is being sold
+                    # Create a new transaction object
+                    transaction = Transaction.objects.create(
+                        upi_details=upi_details,
+                        transaction_id=transaction_id,
+                        transaction_ref_id=transaction_ref_id,
+                        amount=total_price,
+                        item_id = item.id,
+                        unit = abs(quantity_delta),
+                        status='pending',
+                    )
+
+                    response_data = {
+                                "message": "QR code generated successfully.",
+                                "quantity_delta": quantity_delta,
+                                "total_price": total_price,
+                                "transaction_id": transaction_id
+                            }
+                    return Response(response_data, status=status.HTTP_200_OK)
+
+                else:  # Item is being added
+                    response_data = {
+                        "message": "Item quantity updated successfully.",
+                        "updated_quantity": item.quantity,
+                    }
+                    return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+class UpdateTransactionStatusAPIView(generics.UpdateAPIView):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        transaction_id = request.data.get('transaction_id')
+        identifier = request.data.get('identifier')
+
+        try:
+            transaction = Transaction.objects.get(transaction_id=transaction_id)
+
+            if identifier == 'Y':
+                transaction.status = 'success'
+                transaction.save()
+
+                return Response({"message": "Transaction status updated to success."}, status=status.HTTP_200_OK)
+
+            elif identifier == 'N':
+                transaction.status = 'failed'
+                transaction.save()
+
+                item = ItemDetails.objects.get(id=transaction.item_id)
+                item.quantity += transaction.unit
+                item.save()
+
+                return Response({"message": "Transaction status updated to failed and item quantity updated."}, status=status.HTTP_200_OK)
+
+            else:
+                return Response({"message": "Invalid identifier. It should be either 'Y' or 'N'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            response_data = {"message": str(e)}
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ImportExcelDataAPIView(generics.CreateAPIView):
     serializer_class = ItemDetailsSerializer
