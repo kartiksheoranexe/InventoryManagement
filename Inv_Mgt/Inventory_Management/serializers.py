@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, Transaction
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -42,6 +42,11 @@ class ItemDetailAlertSerializer(serializers.ModelSerializer):
     class Meta:
         model = ItemDetails
         fields = ['id', 'supplier', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'alert_quantity', 'additional_info', 'imported_date']
+
+class UpiDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UpiDetails
+        fields = ['payee_vpa', 'payee_name', 'merchant_code', 'url']
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
