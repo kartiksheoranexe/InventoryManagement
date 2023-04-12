@@ -23,7 +23,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
 from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer
+from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer
 
 
 # Create your views here.
@@ -343,7 +343,21 @@ class ItemAlertCountAPIView(generics.GenericAPIView):
         except Exception as e:
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-        
+
+class CreateUpiDetailsAPIView(generics.CreateAPIView):
+    queryset = UpiDetails.objects.all()
+    serializer_class = UpiDetailsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        serializer.save(user=user)   
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            return Response({"message": "UPI details for this user already exist."}, status=status.HTTP_400_BAD_REQUEST)
 
 class GenerateQRCodeAPIView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
