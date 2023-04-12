@@ -1,5 +1,5 @@
 from django.urls import path
-from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView, SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView
+from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView, SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, UpdateTransactionStatusAPIView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -21,7 +21,9 @@ urlpatterns = [
     path('raise-alert/', ItemAlertListAPIView.as_view()),
     path('alert-count/', ItemAlertCountAPIView.as_view()),
     
+    path('generate-qr-code/', GenerateQRCodeAPIView.as_view()),
     path('modify-item-quantity/', UpdateItemQuantityAPIView.as_view()),
+    path('update-transaction-status/', UpdateTransactionStatusAPIView.as_view()),
 
     path('import-item-excel/', ImportExcelDataAPIView.as_view()),
 

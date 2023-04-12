@@ -1,5 +1,5 @@
 from django.contrib import admin
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
 
 # Register your models here.
 
@@ -19,3 +19,5 @@ admin.site.register(CustomUser, CustomUserAdmin),
 admin.site.register(Business, BusinessAdmin),
 admin.site.register(Supplier, SupplierAdmin),
 admin.site.register(ItemDetails, ItemDetailsAdmin),
+admin.site.register(UpiDetails),
+admin.site.register(Transaction),
