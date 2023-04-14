@@ -1,5 +1,6 @@
 import json
 import base64
+from PIL import Image
 import qrcode
 import pandas as pd
 from uuid import uuid4
@@ -382,11 +383,9 @@ class GenerateQRCodeAPIView(generics.GenericAPIView):
             qr.make(fit=True)
             qr_code_img = qr.make_image(fill_color="black", back_color="white")
 
-            # Save the QR code image to a BytesIO buffer
             buffered = BytesIO()
-            qr_code_img.save(buffered, format="PNG")
+            qr_code_img.save(buffered)
             buffered.seek(0)  # Move the buffer position to the beginning
-
             response = HttpResponse(buffered, content_type='image/png')
             return response
         else:
