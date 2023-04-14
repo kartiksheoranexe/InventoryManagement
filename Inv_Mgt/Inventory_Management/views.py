@@ -1,6 +1,5 @@
 import json
 import base64
-from PIL import Image
 import qrcode
 import pandas as pd
 from uuid import uuid4
