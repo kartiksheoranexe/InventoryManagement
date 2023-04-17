@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 
 from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
 
@@ -55,3 +56,20 @@ class TransactionSerializer(serializers.ModelSerializer):
             'id', 'upi_details', 'transaction_id', 'transaction_ref_id',
             'amount', 'item_id', 'unit', 'status', 'created_at', 'updated_at'
         ]
+
+class TransactionDetailsSerializer(serializers.ModelSerializer):
+    time = serializers.SerializerMethodField()
+    item_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = ('time', 'unit', 'amount', 'status', 'item_details')
+        depth = 1
+
+    def get_time(self, obj):
+        local_time = timezone.localtime(obj.created_at)
+        return local_time.time()
+
+    def get_item_details(self, obj):
+        item = ItemDetails.objects.get(id=obj.item_id)
+        return ItemDetailsSerializer(item).data

@@ -5,7 +5,7 @@ import pandas as pd
 from uuid import uuid4
 from io import BytesIO
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, date
 from django.http import JsonResponse
 from django.http.multipartparser import MultiPartParser
 from django.http import HttpResponse
@@ -23,7 +23,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
 from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer
+from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer
 
 
 # Create your views here.
@@ -596,3 +596,17 @@ class ImportExcelDataAPIView(generics.CreateAPIView):
 
         except Exception as e:
             return Response({"status": "failure", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class TransactionsByDateView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TransactionDetailsSerializer
+
+    def get_queryset(self):
+        target_date_str = self.request.query_params.get('date')
+        if target_date_str:
+            target_date = date.fromisoformat(target_date_str)
+        else:
+            target_date = date.today()
+
+        return Transaction.objects.filter(created_at__date=target_date, status='success')
