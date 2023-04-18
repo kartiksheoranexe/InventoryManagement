@@ -413,6 +413,29 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
             items = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
 
+            if additional_info:
+                match_found = False
+                for item in items:
+                    additional_info_matched = True
+                    for key, value in additional_info.items():
+                        if not (item.additional_info and key in item.additional_info and item.additional_info[key] == value):
+                            additional_info_matched = False
+                            break
+
+                    if additional_info_matched:
+                        match_found = True
+                        item.quantity += quantity_delta
+                        item.save()
+                        break
+
+                if not match_found:
+                    return Response({"message": "Additional info doesn't match."}, status=status.HTTP_400_BAD_REQUEST)
+
+            else:
+                item = items.first()
+                item.quantity += quantity_delta
+                item.save()
+
             if quantity_delta < 0:  # Item is being sold
                 if item.quantity + quantity_delta < 0:
                     response_data = {
@@ -427,84 +450,36 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
                 transaction_id = f"txn-{uuid4()}"
                 transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
 
-            # Update the item quantity
-            if additional_info:
-                for item in items:
-                    additional_info_matched = True
-                    for key, value in additional_info.items():
-                        if item.additional_info and key in item.additional_info and item.additional_info[key] == value:
-                            continue
-                        else:
-                            additional_info_matched = False
-                            break
-                    if additional_info_matched:
-                        item.quantity += quantity_delta
-                        item.save()
+                # Create a new transaction object
+                transaction = Transaction.objects.create(
+                    upi_details=upi_details,
+                    transaction_id=transaction_id,
+                    transaction_ref_id=transaction_ref_id,
+                    amount=total_price,
+                    item_id=item.id,
+                    unit=abs(quantity_delta),
+                    status='pending',
+                )
 
-                        if quantity_delta < 0:  # Item is being sold
-                            # Create a new transaction object
-                            transaction = Transaction.objects.create(
-                                upi_details=upi_details,
-                                transaction_id=transaction_id,
-                                transaction_ref_id=transaction_ref_id,
-                                amount=total_price,
-                                item_id = item.id,
-                                unit = abs(quantity_delta),
-                                status='pending',
-                            )
+                response_data = {
+                    "message": "QR code generated successfully.",
+                    "quantity_delta": quantity_delta,
+                    "total_price": total_price,
+                    "transaction_id": transaction_id
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
 
-                            response_data = {
-                                "message": "QR code generated successfully.",
-                                "quantity_delta": quantity_delta,
-                                "total_price": total_price,
-                                "transaction_id": transaction_id
-                            }
-                            return Response(response_data, status=status.HTTP_200_OK)
-
-                        else:  # Item is being added
-                            response_data = {
-                                "message": "Item quantity updated successfully.",
-                                "updated_quantity": item.quantity,
-                            }
-                            return Response(response_data, status=status.HTTP_200_OK)
-
-                    else:
-                        return Response({"message": "Additional info doesn't match."}, status=status.HTTP_400_BAD_REQUEST)
-
-            else:
-                item.quantity += quantity_delta
-                item.save()
-
-                if quantity_delta < 0:  # Item is being sold
-                    # Create a new transaction object
-                    transaction = Transaction.objects.create(
-                        upi_details=upi_details,
-                        transaction_id=transaction_id,
-                        transaction_ref_id=transaction_ref_id,
-                        amount=total_price,
-                        item_id = item.id,
-                        unit = abs(quantity_delta),
-                        status='pending',
-                    )
-
-                    response_data = {
-                                "message": "QR code generated successfully.",
-                                "quantity_delta": quantity_delta,
-                                "total_price": total_price,
-                                "transaction_id": transaction_id
-                            }
-                    return Response(response_data, status=status.HTTP_200_OK)
-
-                else:  # Item is being added
-                    response_data = {
-                        "message": "Item quantity updated successfully.",
-                        "updated_quantity": item.quantity,
-                    }
-                    return Response(response_data, status=status.HTTP_200_OK)
+            else:  # Item is being added
+                response_data = {
+                    "message": "Item quantity updated successfully.",
+                    "updated_quantity": item.quantity,
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UpdateTransactionStatusAPIView(generics.UpdateAPIView):
     queryset = Transaction.objects.all()
