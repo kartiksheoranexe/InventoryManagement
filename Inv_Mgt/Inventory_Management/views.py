@@ -411,7 +411,7 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
             upi_details = UpiDetails.objects.get(user=request.user)
             business = Business.objects.get(owner=user, business_name=business_name)
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
-            item = ItemDetails.objects.get(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
+            items = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
 
             if quantity_delta < 0:  # Item is being sold
                 if item.quantity + quantity_delta < 0:
@@ -429,8 +429,15 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
 
             # Update the item quantity
             if additional_info:
-                for key, value in additional_info.items():
-                    if item.additional_info and key in item.additional_info and item.additional_info[key] == value:
+                for item in items:
+                    additional_info_matched = True
+                    for key, value in additional_info.items():
+                        if item.additional_info and key in item.additional_info and item.additional_info[key] == value:
+                            continue
+                        else:
+                            additional_info_matched = False
+                            break
+                    if additional_info_matched:
                         item.quantity += quantity_delta
                         item.save()
 
