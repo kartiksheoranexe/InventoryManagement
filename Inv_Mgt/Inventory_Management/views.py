@@ -593,7 +593,7 @@ class TransactionsByDateView(generics.ListAPIView):
         else:
             target_date = date.today()
 
-        queryset = Transaction.objects.filter(created_at__date=target_date, status='success')
+        queryset = Transaction.objects.filter(created_at__date=target_date, status='success').order_by('-created_at')
 
         if business_name:
             user = self.request.user
