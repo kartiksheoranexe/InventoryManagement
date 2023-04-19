@@ -6,6 +6,7 @@ from uuid import uuid4
 from io import BytesIO
 from urllib.parse import quote
 from datetime import datetime, date
+from django.db.models import Subquery
 from django.http import JsonResponse
 from django.http.multipartparser import MultiPartParser
 from django.http import HttpResponse
@@ -586,9 +587,18 @@ class TransactionsByDateView(generics.ListAPIView):
 
     def get_queryset(self):
         target_date_str = self.request.query_params.get('date')
+        business_name = self.request.query_params.get('business_name')
         if target_date_str:
             target_date = date.fromisoformat(target_date_str)
         else:
             target_date = date.today()
 
-        return Transaction.objects.filter(created_at__date=target_date, status='success')
+        queryset = Transaction.objects.filter(created_at__date=target_date, status='success')
+
+        if business_name:
+            user = self.request.user
+            business = Business.objects.get(owner=user, business_name=business_name)
+            item_ids = ItemDetails.objects.filter(supplier__business=business).values('id')
+            queryset = queryset.filter(item_id__in=Subquery(item_ids))
+
+        return queryset
