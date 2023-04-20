@@ -63,7 +63,7 @@ class TransactionDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ('time', 'unit', 'amount', 'status', 'item_details')
+        fields = ('time', 'unit', 'amount', 'status', 'transaction_id', 'item_details')
         depth = 1
 
     def get_time(self, obj):
