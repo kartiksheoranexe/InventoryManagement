@@ -5,9 +5,12 @@ import pandas as pd
 from uuid import uuid4
 from io import BytesIO
 from urllib.parse import quote
-from datetime import datetime, date
+from django.db.models import Sum
+from django.utils import timezone
 from django.db.models import Subquery
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from datetime import datetime, date, timedelta
 from django.http.multipartparser import MultiPartParser
 from django.http import HttpResponse
 from django.db.models import Q, F
@@ -602,3 +605,115 @@ class TransactionsByDateView(generics.ListAPIView):
             queryset = queryset.filter(item_id__in=Subquery(item_ids))
 
         return queryset
+
+
+class SalesPerformanceAPIView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        time_period = self.request.query_params.get('time_period', '1')
+        current_date = timezone.now().date()
+
+        if time_period == '1':
+            start_date = current_date
+        elif time_period == '30':
+            start_date = current_date - timedelta(days=30)
+        elif time_period == '9':
+            current_year = current_date.year
+            start_date = current_date.replace(year=current_year, month=1, day=1)
+        else:
+            start_date = current_date
+        transactions = Transaction.objects.filter(status='success', created_at__gte=start_date)
+        sales_data = []
+        
+        total_revenue = 0
+        total_cogs = 0
+        total_profit_loss = 0
+
+        for transaction in transactions:
+            item = get_object_or_404(ItemDetails, pk=transaction.item_id)
+            supplier = item.supplier
+            units_sold = transaction.unit
+            revenue = transaction.amount
+            cogs = item.cogs * units_sold
+            profit_loss = revenue - cogs
+            profit_loss_percentage = (profit_loss / revenue) * 100
+
+            total_revenue += revenue
+            total_cogs += cogs
+            total_profit_loss += profit_loss
+
+            sales_data.append({
+                'item_name': item.item_name,
+                'distributor': supplier.distributor_name,
+                'category': supplier.category,
+                'units_sold': units_sold,
+                'revenue': revenue,
+                'cogs': cogs,
+                'profit_loss': profit_loss,
+                'profit_loss_percentage': profit_loss_percentage
+            })
+
+        total_profit_loss_percentage = (total_profit_loss / total_revenue) * 100
+
+        summary_data = {
+            'total_revenue': total_revenue,
+            'total_cogs': total_cogs,
+            'total_profit_loss': total_profit_loss,
+            'total_profit_loss_percentage': total_profit_loss_percentage,
+            'sales_data': sales_data
+        }
+
+        return summary_data
+
+
+    def list(self, request, *args, **kwargs):
+        summary_data = self.get_queryset()
+        return Response(summary_data)
+
+
+class TopItemsAPIView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = ItemDetails.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        current_year = datetime.now().year
+        items = self.get_queryset()
+        item_sales = []
+
+        for item in items:
+            units_sold = Transaction.objects.filter(
+                status='success', 
+                item_id=item.id,
+                created_at__year=current_year
+            ).aggregate(Sum('unit'))['unit__sum'] or 0
+
+            revenue = units_sold * item.price
+            cogs = units_sold * item.cogs
+            profit_loss = revenue - cogs
+            profit_loss_percentage = (profit_loss / revenue) * 100 if revenue != 0 else 0
+
+            supplier = Supplier.objects.get(id=item.supplier_id)
+
+            item_sales.append({
+                'item_name': item.item_name,
+                'size': item.size,
+                'unit_of_measurement': item.unit_of_measurement,
+                'distributor': supplier.distributor_name,
+                'category': supplier.category,
+                'units_sold': units_sold,
+                'revenue': revenue,
+                'cogs': cogs,
+                'profit_loss': profit_loss,
+                'profit_loss_percentage': profit_loss_percentage,
+            })
+
+        sorted_items = sorted(item_sales, key=lambda x: x['units_sold'], reverse=True)[:10]
+
+        ranked_items = []
+        for rank, item in enumerate(sorted_items, start=1):
+            ranked_item = item.copy()
+            ranked_item['rank'] = rank
+            ranked_items.append(ranked_item)
+
+        return Response(ranked_items)

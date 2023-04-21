@@ -71,6 +71,7 @@ class ItemDetails(models.Model):
     quantity = models.IntegerField(default=0)
     alert_quantity = models.IntegerField(default=0)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    cogs = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     additional_info = models.JSONField(blank=True, null=True)
     imported_date = models.DateField(null=True, blank=True)
     created_at = models.DateField(auto_now_add=True)
