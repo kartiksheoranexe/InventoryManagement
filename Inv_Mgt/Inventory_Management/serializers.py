@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
+from datetime import date
+import math
 
 from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
 
@@ -33,9 +35,23 @@ class ItemDetailsSerializer(serializers.ModelSerializer):
 
 class ItemDetailsSearchSerializer(serializers.ModelSerializer):
     supplier = SupplierSerializer()
+    daystostockout = serializers.SerializerMethodField()
+
     class Meta:
         model = ItemDetails
-        fields = ['id', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'additional_info', 'supplier']
+        fields = ['id', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'additional_info', 'daystostockout', 'alert_quantity', 'supplier']
+
+    def get_daystostockout(self, obj):
+        today = date.today()
+        transactions_today = Transaction.objects.filter(item_id=obj.id, created_at__date=today, status='success')
+        total_units_sold = sum(transaction.unit for transaction in transactions_today)
+
+        if total_units_sold > 0:
+            d_daystostockout = obj.quantity / total_units_sold
+            daystostockout = math.ceil(d_daystostockout)
+            return daystostockout
+        else:
+            return obj.daystostockout
 
 class ItemDetailAlertSerializer(serializers.ModelSerializer):
     supplier = SupplierSerializer()
