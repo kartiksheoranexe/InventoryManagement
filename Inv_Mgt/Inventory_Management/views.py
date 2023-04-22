@@ -613,6 +613,7 @@ class SalesPerformanceAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        business = self.request.query_params.get('business')
         time_period = self.request.query_params.get('time_period', '1')
         current_date = timezone.now().date()
 
@@ -625,7 +626,15 @@ class SalesPerformanceAPIView(generics.ListAPIView):
             start_date = current_date.replace(year=current_year, month=1, day=1)
         else:
             start_date = current_date
-        transactions = Transaction.objects.filter(status='success', created_at__gte=start_date)
+        
+        if business:
+            business = get_object_or_404(Business, business_name=business)
+            suppliers = Supplier.objects.filter(business=business)
+            items = ItemDetails.objects.filter(supplier__in=suppliers)
+            transactions = Transaction.objects.filter(status='success', created_at__gte=start_date, item_id__in=items)
+        else:
+            transactions = Transaction.objects.filter(status='success', created_at__gte=start_date)
+    
         sales_data = []
         
         total_revenue = 0
@@ -656,7 +665,7 @@ class SalesPerformanceAPIView(generics.ListAPIView):
                 'profit_loss_percentage': profit_loss_percentage
             })
 
-        total_profit_loss_percentage = (total_profit_loss / total_revenue) * 100
+        total_profit_loss_percentage = (total_profit_loss / total_revenue) * 100 if total_revenue != 0 else 0
 
         summary_data = {
             'total_revenue': total_revenue,
@@ -679,8 +688,15 @@ class TopItemsAPIView(generics.ListAPIView):
     queryset = ItemDetails.objects.all()
 
     def list(self, request, *args, **kwargs):
+        business = self.request.query_params.get('business')
         current_year = datetime.now().year
-        items = self.get_queryset()
+
+        if business:
+            business = get_object_or_404(Business, business_name=business)
+            suppliers = Supplier.objects.filter(business=business)
+            items = ItemDetails.objects.filter(supplier__in=suppliers)
+        else:
+            items = self.get_queryset()
         item_sales = []
 
         for item in items:
