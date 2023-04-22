@@ -542,8 +542,9 @@ class ImportExcelDataAPIView(generics.CreateAPIView):
                 uom = row.Uom
                 quantity = row.Quantity
                 price = row.Price if not pd.isna(row.Price) else 0.00
+                cogs = row.COGS if not pd.isna(row.COGS) else 0.00
                 alert_quantity = row.Alert
-                additional_info_str = row._11
+                additional_info_str = row._12
                 imported_date = row.Date.date()
 
                 additional_info = json.loads(additional_info_str)
@@ -563,6 +564,7 @@ class ImportExcelDataAPIView(generics.CreateAPIView):
                 if existing_item:
                     existing_item.quantity = quantity
                     existing_item.price = price
+                    existing_item.cogs = cogs
                     existing_item.alert_quantity = alert_quantity
                     existing_item.additional_info.update(additional_info)
                     existing_item.imported_date = imported_date
@@ -572,7 +574,7 @@ class ImportExcelDataAPIView(generics.CreateAPIView):
                     updated_rows += 1
                     print(f"Updated row: {item_name} ({updated_rows})")
                 else:
-                    item = ItemDetails.objects.create(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom, quantity=quantity, price=price, alert_quantity=alert_quantity, additional_info=additional_info, imported_date=imported_date)
+                    item = ItemDetails.objects.create(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom, quantity=quantity, price=price, cogs=cogs,  alert_quantity=alert_quantity, additional_info=additional_info, imported_date=imported_date)
 
                     serialized_data = ItemDetailsSerializer(item).data
                     added_rows += 1
