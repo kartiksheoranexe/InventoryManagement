@@ -39,7 +39,7 @@ class ItemDetailsSearchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ItemDetails
-        fields = ['id', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'additional_info', 'daystostockout', 'alert_quantity', 'supplier']
+        fields = ['id', 'item_name', 'item_type', 'size', 'unit_of_measurement', 'quantity', 'price', 'additional_info', 'daystostockout', 'alert_quantity', 'supplier']
 
     def get_daystostockout(self, obj):
         today = date.today()
@@ -51,7 +51,8 @@ class ItemDetailsSearchSerializer(serializers.ModelSerializer):
             daystostockout = math.ceil(d_daystostockout)
             return daystostockout
         else:
-            return obj.daystostockout
+            daystostockout = 0
+            return daystostockout
 
 class ItemDetailAlertSerializer(serializers.ModelSerializer):
     supplier = SupplierSerializer()
