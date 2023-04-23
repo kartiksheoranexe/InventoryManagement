@@ -372,15 +372,11 @@ class GenerateQRCodeAPIView(generics.GenericAPIView):
 
         if quantity_delta < 0:  # Item is being sold
             upi_details = UpiDetails.objects.get(user=request.user)
-
-            # Calculate the total price
-            total_price = price * abs(quantity_delta)
-            # transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
             payee_name = quote(upi_details.payee_name)
 
             # Generate the UPI QR code
-            transaction_note = f"Purchase of Item x {quantity_delta}"  # example transaction note
-            upi_payload = f"upi://pay?pa={upi_details.payee_vpa}&pn={payee_name}&tn={transaction_note}&am={total_price}&cu=INR"
+            transaction_note = f"Purchase of Item x {quantity_delta} x price {price}"  # example transaction note
+            upi_payload = f"upi://pay?pa={upi_details.payee_vpa}&pn={payee_name}&tn={transaction_note}&am={price}&cu=INR"
             qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
             qr.add_data(upi_payload)
             qr.make(fit=True)
@@ -400,6 +396,7 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
+        print(request.data)
         business_name = request.data.get('business')
         distributor_name = request.data.get('distributors_name')
         category = request.data.get('category')
@@ -416,7 +413,6 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
             business = Business.objects.get(owner=user, business_name=business_name)
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
             items = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
-
             if additional_info:
                 match_found = False
                 for item in items:
