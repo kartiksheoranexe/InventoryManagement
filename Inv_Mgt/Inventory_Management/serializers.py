@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import date
 import math
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -90,3 +90,10 @@ class TransactionDetailsSerializer(serializers.ModelSerializer):
     def get_item_details(self, obj):
         item = ItemDetails.objects.get(id=obj.item_id)
         return ItemDetailsSerializer(item).data
+
+class CartItemSerializer(serializers.ModelSerializer):
+    item = ItemDetailsSerializer()
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'item', 'quantity']

@@ -109,3 +109,21 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.upi_details.user.username} - {self.transaction_id} - {self.status}"
 
+
+class Cart(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.user.username}'s Cart"
+    
+    
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, default=0)
+    item = models.ForeignKey(ItemDetails, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.item.item_name} - {self.quantity}"
+
+
+

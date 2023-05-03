@@ -26,8 +26,8 @@ from rest_framework.response import Response
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem, Cart
+from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer, CartItemSerializer
 
 
 # Create your views here.
@@ -367,28 +367,25 @@ class GenerateQRCodeAPIView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        quantity_delta = request.data.get('quantity_delta')
         price = request.data.get('price')
 
-        if quantity_delta < 0:  # Item is being sold
-            upi_details = UpiDetails.objects.get(user=request.user)
-            payee_name = quote(upi_details.payee_name)
+        upi_details = UpiDetails.objects.get(user=request.user)
+        payee_name = quote(upi_details.payee_name)
 
-            # Generate the UPI QR code
-            transaction_note = f"Purchase of Item x {quantity_delta} x price {price}"  # example transaction note
-            upi_payload = f"upi://pay?pa={upi_details.payee_vpa}&pn={payee_name}&tn={transaction_note}&am={price}&cu=INR"
-            qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
-            qr.add_data(upi_payload)
-            qr.make(fit=True)
-            qr_code_img = qr.make_image(fill_color="black", back_color="white")
+        # Generate the UPI QR code
+        transaction_note = f"Purchase of Item x price {price}"  # example transaction note
+        upi_payload = f"upi://pay?pa={upi_details.payee_vpa}&pn={payee_name}&tn={transaction_note}&am={price}&cu=INR"
+        qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+        qr.add_data(upi_payload)
+        qr.make(fit=True)
+        qr_code_img = qr.make_image(fill_color="black", back_color="white")
 
-            buffered = BytesIO()
-            qr_code_img.save(buffered)
-            buffered.seek(0)  # Move the buffer position to the beginning
-            response = HttpResponse(buffered, content_type='image/png')
-            return response
-        else:
-            return Response({"message": "No item sold."}, status=status.HTTP_400_BAD_REQUEST)
+        buffered = BytesIO()
+        qr_code_img.save(buffered)
+        buffered.seek(0)  # Move the buffer position to the beginning
+        response = HttpResponse(buffered, content_type='image/png')
+        return response
+        
 
 class UpdateItemQuantityAPIView(generics.UpdateAPIView):
     queryset = ItemDetails.objects.all()
@@ -396,7 +393,6 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
-        print(request.data)
         business_name = request.data.get('business')
         distributor_name = request.data.get('distributors_name')
         category = request.data.get('category')
@@ -409,7 +405,6 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
 
         try:
             user = request.user
-            upi_details = UpiDetails.objects.get(user=request.user)
             business = Business.objects.get(owner=user, business_name=business_name)
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
             items = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
@@ -443,29 +438,9 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
                     }
                     return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
                 
-                # Calculate the total price
-                total_price = item.price * abs(quantity_delta)
-
-                # Generate transaction_id and transaction_ref_id
-                transaction_id = f"txn-{uuid4()}"
-                transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
-
-                # Create a new transaction object
-                transaction = Transaction.objects.create(
-                    upi_details=upi_details,
-                    transaction_id=transaction_id,
-                    transaction_ref_id=transaction_ref_id,
-                    amount=total_price,
-                    item_id=item.id,
-                    unit=abs(quantity_delta),
-                    status='pending',
-                )
-
                 response_data = {
-                    "message": "QR code generated successfully.",
-                    "quantity_delta": quantity_delta,
-                    "total_price": total_price,
-                    "transaction_id": transaction_id
+                    "item_id": item.id,
+                    "quantity_delta": quantity_delta
                 }
                 return Response(response_data, status=status.HTTP_200_OK)
 
@@ -487,34 +462,37 @@ class UpdateTransactionStatusAPIView(generics.UpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def update(self, request, *args, **kwargs):
-        transaction_id = request.data.get('transaction_id')
+        transaction_ids = request.data.get('transaction_ids', [])
         identifier = request.data.get('identifier')
 
-        try:
-            transaction = Transaction.objects.get(transaction_id=transaction_id)
+        if not transaction_ids or not isinstance(transaction_ids, list):
+            return Response({"message": "transaction_ids must be a non-empty list."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if identifier == 'Y':
-                transaction.status = 'success'
-                transaction.save()
+        for transaction_id in transaction_ids:
+            try:
+                transaction = Transaction.objects.get(transaction_id=transaction_id)
 
-                return Response({"message": "Transaction status updated to success."}, status=status.HTTP_200_OK)
+                if identifier == 'Y':
+                    transaction.status = 'success'
+                    transaction.save()
 
-            elif identifier == 'N':
-                transaction.status = 'failed'
-                transaction.save()
+                elif identifier == 'N':
+                    transaction.status = 'failed'
+                    transaction.save()
 
-                item = ItemDetails.objects.get(id=transaction.item_id)
-                item.quantity += transaction.unit
-                item.save()
+                    item = ItemDetails.objects.get(id=transaction.item_id)
+                    item.quantity += transaction.unit
+                    item.save()
 
-                return Response({"message": "Transaction status updated to failed and item quantity updated."}, status=status.HTTP_200_OK)
+                else:
+                    return Response({"message": "Invalid identifier. It should be either 'Y' or 'N'."}, status=status.HTTP_400_BAD_REQUEST)
 
-            else:
-                return Response({"message": "Invalid identifier. It should be either 'Y' or 'N'."}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                response_data = {"message": str(e), "transaction_id": transaction_id}
+                return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
-        except Exception as e:
-            response_data = {"message": str(e)}
-            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Transaction statuses updated successfully."}, status=status.HTTP_200_OK)
+
 
 
 class ImportExcelDataAPIView(generics.CreateAPIView):
@@ -731,3 +709,95 @@ class TopItemsAPIView(generics.ListAPIView):
             ranked_items.append(ranked_item)
 
         return Response(ranked_items)
+
+class CartItemListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        cart, created = Cart.objects.get_or_create(user=user)
+        return CartItem.objects.filter(cart=cart)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        response_data = []
+
+        for cart_item in queryset:
+            item = cart_item.item
+            transaction = Transaction.objects.filter(item_id=item.id).last()
+            response_data.append({
+                "item": item.item_name,
+                "size": item.size,
+                "unit": transaction.unit,
+                "total_price": transaction.amount,
+                "transaction_id": transaction.transaction_id
+            })
+
+        return Response(response_data)
+
+    def create(self, request, *args, **kwargs):
+        item_id = request.data.get('item_id')
+        quantity = request.data.get('quantity', 0)
+
+        try:
+            user = request.user
+            cart, created = Cart.objects.get_or_create(user=user)
+            item = ItemDetails.objects.get(id=item_id)
+
+            if quantity < 0:  # Item is being sold
+                if item.quantity + quantity < 0:
+                    response_data = {
+                        "message": "Insufficient quantity in stock.",
+                    }
+                    return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+            cart_item, created = CartItem.objects.get_or_create(cart=cart, item=item, quantity=quantity)
+            if not created:
+                cart_item.quantity += quantity
+            else:
+                cart_item.quantity = quantity
+            cart_item.save()
+
+            # Calculate the total price
+            total_price = item.price * abs(quantity)
+            # Generate transaction_id and transaction_ref_id
+            transaction_id = f"txn-{uuid4()}"
+            transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
+
+            # Create a new transaction object
+            upi_details = UpiDetails.objects.get(user=request.user)
+            transaction = Transaction.objects.create(
+                upi_details=upi_details,
+                transaction_id=transaction_id,
+                transaction_ref_id=transaction_ref_id,
+                amount=total_price,
+                item_id=item.id,
+                unit=abs(quantity),
+                status='pending',
+            )
+
+            response_data = {
+                "message": "Item added.",
+                "item": item.item_name,
+                "size": item.size,
+                "unit": transaction.unit,
+                "total_price": total_price,
+                "transaction_id": transaction_id
+            }
+            print(response_data)
+            return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            response_data = {"message": str(e)}
+            return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CartItemRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CartItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        cart = Cart.objects.get(user=user)
+        return CartItem.objects.filter(cart=cart)
