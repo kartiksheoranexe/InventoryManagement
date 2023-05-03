@@ -181,6 +181,31 @@ class ListBusinessSuppliers(generics.ListAPIView):
         else:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
+class ListUPIDetails(generics.ListAPIView):
+    serializer_class = UpiDetailsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user:
+            return UpiDetails.objects.filter(user=user)
+        else:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+class UPIDeleteAPIView(generics.DestroyAPIView):
+    serializer_class = UpiDetailsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        user = request.user
+        upi = request.data['upi']
+        try:
+            upi_details = UpiDetails.objects.get(user=user,payee_vpa=upi)
+        except UpiDetails.DoesNotExist:
+            raise ValidationError('UpiDetails does not exist for the current user.')
+        upi_details.delete()
+        message = 'UpiDetails has been deleted successfully.'
+        return Response({'message': message}, status=status.HTTP_204_NO_CONTENT)
 
 class SearchSupplierAPIView(generics.ListAPIView):
     serializer_class = SupplierSerializer
