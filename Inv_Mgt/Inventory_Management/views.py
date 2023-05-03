@@ -752,6 +752,7 @@ class CartItemListCreateAPIView(generics.ListCreateAPIView):
             item = cart_item.item
             transaction = Transaction.objects.filter(item_id=item.id).last()
             response_data.append({
+                "cart_item_id": cart_item.id,
                 "item": item.item_name,
                 "size": item.size,
                 "unit": transaction.unit,
@@ -804,13 +805,13 @@ class CartItemListCreateAPIView(generics.ListCreateAPIView):
 
             response_data = {
                 "message": "Item added.",
+                "cart_item_id": cart_item.id,
                 "item": item.item_name,
                 "size": item.size,
                 "unit": transaction.unit,
                 "total_price": total_price,
                 "transaction_id": transaction_id
             }
-            print(response_data)
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -826,3 +827,12 @@ class CartItemRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
         user = self.request.user
         cart = Cart.objects.get(user=user)
         return CartItem.objects.filter(cart=cart)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response({"message": "Item deleted"}, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({"message": "Item not deleted"}, status=status.HTTP_400_BAD_REQUEST)
+
