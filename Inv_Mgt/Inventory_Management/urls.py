@@ -1,5 +1,5 @@
 from django.urls import path
-from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView, SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView
+from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, LogoutAPIView, BusinessCreateView, ListBusiness, SupplierCreateAPIView, SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView, CartItemListCreateAPIView, CartItemRetrieveUpdateDestroyAPIView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -31,5 +31,9 @@ urlpatterns = [
     path('top-items/', TopItemsAPIView.as_view(), name='top-items'),
 
     path('import-item-excel/', ImportExcelDataAPIView.as_view()),
+
+    path('cart/', CartItemListCreateAPIView.as_view(), name='cart-list-create'),
+    path('cart/<int:pk>/', CartItemRetrieveUpdateDestroyAPIView.as_view(), name='cart-item-detail'),
+
 
 ]
