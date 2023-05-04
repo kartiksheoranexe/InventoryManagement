@@ -640,6 +640,8 @@ class SalesPerformanceAPIView(generics.ListAPIView):
         total_cogs = 0
         total_profit_loss = 0
 
+        consolidated_data = {}
+
         for transaction in transactions:
             item = get_object_or_404(ItemDetails, pk=transaction.item_id)
             supplier = item.supplier
@@ -653,18 +655,29 @@ class SalesPerformanceAPIView(generics.ListAPIView):
             total_cogs += cogs
             total_profit_loss += profit_loss
 
-            sales_data.append({
-                'item_name': item.item_name,
-                'distributor': supplier.distributor_name,
-                'category': supplier.category,
-                'units_sold': units_sold,
-                'revenue': revenue,
-                'cogs': cogs,
-                'profit_loss': profit_loss,
-                'profit_loss_percentage': profit_loss_percentage
-            })
+            item_key = (item.item_name, supplier.distributor_name, supplier.category)
+
+            if item_key not in consolidated_data:
+                consolidated_data[item_key] = {
+                    'item_name': item.item_name,
+                    'distributor': supplier.distributor_name,
+                    'category': supplier.category,
+                    'units_sold': units_sold,
+                    'revenue': revenue,
+                    'cogs': cogs,
+                    'profit_loss': profit_loss,
+                    'profit_loss_percentage': profit_loss_percentage
+                }
+            else:
+                existing_data = consolidated_data[item_key]
+                existing_data['units_sold'] += units_sold
+                existing_data['revenue'] += revenue
+                existing_data['cogs'] += cogs
+                existing_data['profit_loss'] += profit_loss
+                existing_data['profit_loss_percentage'] = (existing_data['profit_loss'] / existing_data['revenue']) * 100
 
         total_profit_loss_percentage = (total_profit_loss / total_revenue) * 100 if total_revenue != 0 else 0
+        sales_data = list(consolidated_data.values())
 
         summary_data = {
             'total_revenue': total_revenue,
@@ -676,10 +689,11 @@ class SalesPerformanceAPIView(generics.ListAPIView):
 
         return summary_data
 
-
     def list(self, request, *args, **kwargs):
         summary_data = self.get_queryset()
         return Response(summary_data)
+
+            
 
 
 class TopItemsAPIView(generics.ListAPIView):
