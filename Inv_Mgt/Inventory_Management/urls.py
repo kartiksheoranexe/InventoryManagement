@@ -3,11 +3,15 @@ from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, Lo
     SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, \
     SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, \
     UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView, CartItemListCreateAPIView, \
-    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView
+    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView
+
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
     path('login-user/', LoginAPIView.as_view(), name='login'),
     path('logout-user/', LogoutAPIView.as_view(), name='logout'),
+    path('password-reset-request/', PasswordResetRequestCreateAPIView.as_view(), name='password_reset_request'),
+    path('verify-otp/', VerifyOTPAPIView.as_view(), name='verify_otp'),
+    path('password-reset/', ResetPasswordAPIView.as_view(), name='reset_password'),
 
     path('register_business/', BusinessCreateView.as_view(), name='register_business'),
     path('list_business/', ListBusiness.as_view(), name='list_business'),

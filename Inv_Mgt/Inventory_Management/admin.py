@@ -1,5 +1,5 @@
 from django.contrib import admin
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, Cart, CartItem
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, Cart, CartItem, PasswordResetRequest
 
 # Register your models here.
 
@@ -23,3 +23,4 @@ admin.site.register(UpiDetails),
 admin.site.register(Transaction),
 admin.site.register(Cart),
 admin.site.register(CartItem),
+admin.site.register(PasswordResetRequest),
