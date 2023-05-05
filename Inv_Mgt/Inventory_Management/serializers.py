@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import date
 import math
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem
+from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -14,6 +14,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+class PasswordResetRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PasswordResetRequest
+        fields = ['user', 'otp', 'timestamp', 'is_used']
 
 class BusinessSerializer(serializers.ModelSerializer):
     class Meta:

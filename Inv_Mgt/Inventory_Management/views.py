@@ -6,6 +6,7 @@ from uuid import uuid4
 from io import BytesIO
 from urllib.parse import quote
 from django.db.models import Sum
+from django.core.mail import send_mail
 from django.utils import timezone
 from django.db.models import Subquery
 from django.http import JsonResponse
@@ -14,6 +15,7 @@ from datetime import datetime, date, timedelta
 from django.http.multipartparser import MultiPartParser
 from django.http import HttpResponse
 from django.db.models import Q, F
+from django.conf import settings
 from django.shortcuts import render
 from django.db import IntegrityError
 from django.contrib.auth import authenticate
@@ -26,8 +28,8 @@ from rest_framework.response import Response
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem, Cart
-from Inventory_Management.serializers import CustomUserSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer, CartItemSerializer
+from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem, Cart
+from Inventory_Management.serializers import CustomUserSerializer, PasswordResetRequestSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer, CartItemSerializer
 
 
 # Create your views here.
@@ -67,6 +69,83 @@ class LogoutAPIView(APIView):
         auth_token = AuthToken.objects.get(token_key=t)
         auth_token.delete()
         return Response({"User Logged Out Succesfully!!"}, status=status.HTTP_204_NO_CONTENT)
+
+class PasswordResetRequestCreateAPIView(generics.CreateAPIView):
+    queryset = PasswordResetRequest.objects.all()
+    serializer_class = PasswordResetRequestSerializer
+
+    def create(self, request, *args, **kwargs):
+        identifier = request.data['identifier']
+        print(identifier)
+        user = CustomUser.objects.filter(username=identifier).first() or \
+               CustomUser.objects.filter(email=identifier).first() or \
+               CustomUser.objects.filter(phone_no=identifier).first()
+        if user:
+            otp = PasswordResetRequest.generate_otp()
+            password_reset_request = PasswordResetRequest(user=user, otp=otp)
+            password_reset_request.save()
+
+            # Send email
+            subject = 'Password Reset Request'
+            message = f'Your OTP for password reset is: {otp}'
+            from_email = settings.EMAIL_HOST_USER
+            recipient_list = [user.email]
+
+            send_mail(subject, message, from_email, recipient_list)
+
+            # Send SMS
+            # Use your preferred SMS gateway service, like Twilio, to send the OTP to the user's phone number
+
+            return Response({'message': 'OTP sent'}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class VerifyOTPAPIView(APIView):
+    def post(self, request):
+        identifier = request.data['identifier']
+        provided_otp = request.data['otp']
+
+        user = CustomUser.objects.filter(username=identifier).first() or \
+               CustomUser.objects.filter(email=identifier).first() or \
+               CustomUser.objects.filter(phone_no=identifier).first()
+
+        if user:
+            reset_request = PasswordResetRequest.objects.filter(user=user, otp=provided_otp, is_used=False).first()
+            if reset_request:
+                # Optionally, check if the OTP has expired
+                time_elapsed = timezone.now() - reset_request.timestamp
+                if time_elapsed > timedelta(minutes=15):
+                    return Response({'error': 'OTP has expired'}, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({'message': 'OTP verified'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class ResetPasswordAPIView(APIView):
+    def post(self, request):
+            identifier = request.data['identifier']
+            provided_otp = request.data['otp']
+            new_password = request.data['new_password']
+
+            user = CustomUser.objects.filter(username=identifier).first() or \
+                CustomUser.objects.filter(email=identifier).first() or \
+                CustomUser.objects.filter(phone_no=identifier).first()
+
+            if user:
+                reset_request = PasswordResetRequest.objects.filter(user=user, otp=provided_otp, is_used=False).first()
+                if reset_request:
+                    user.set_password(new_password)
+                    user.save()
+                    reset_request.is_used = True
+                    reset_request.save()
+
+                    return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class BusinessCreateView(generics.CreateAPIView):
     queryset = Business.objects.all()

@@ -1,3 +1,4 @@
+import random
 from django.db import models
 from decimal import Decimal
 from phone_field import PhoneField
@@ -33,6 +34,16 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class PasswordResetRequest(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    otp = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
+
+    @staticmethod
+    def generate_otp():
+        return random.randint(100000, 999999)
 
 class Business(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
