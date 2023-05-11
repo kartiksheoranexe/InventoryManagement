@@ -15,6 +15,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True}
         }
 
+def validate_username(self, value):
+        if ' ' in value:
+            raise serializers.ValidationError("Username must not contain spaces.")
+        return value
+
 class PasswordResetRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = PasswordResetRequest
