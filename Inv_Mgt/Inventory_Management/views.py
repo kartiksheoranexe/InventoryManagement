@@ -367,8 +367,6 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
 
     def get_queryset(self):
         business_name = self.request.query_params.get('business_name', None)
-        category = self.request.query_params.get('category', None)
-        distributor_name = self.request.query_params.get('distributor_name', None)
         item_name = self.request.query_params.get('item_name', None)
 
         if business_name:
@@ -376,7 +374,19 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
         else:
             user_business = Business.objects.filter(owner=self.request.user)
 
+        if item_name and item_name.isdigit():
+            # If the item_name is an integer, try to get ItemDetails by id
+            try:
+                item = ItemDetails.objects.get(id=item_name, supplier__business__in=user_business)
+                print(item)
+                return [item,]  # Return a list containing the item
+            except ItemDetails.DoesNotExist:
+                pass  # If no such ItemDetails, proceed with the current functionality
+
         queryset = ItemDetails.objects.filter(supplier__business__in=user_business)
+
+        category = self.request.query_params.get('category', None)
+        distributor_name = self.request.query_params.get('distributor_name', None)
 
         if category is not None:
             queryset = queryset.filter(supplier__category__icontains=category)
@@ -394,11 +404,16 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
     
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        if not queryset.exists():
-            # return a custom error response
-            return Response({'error': 'No match found'}, status=status.HTTP_404_NOT_FOUND)
+        if isinstance(queryset, list):
+            if not queryset:
+                return Response({'error': 'No match found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            if not queryset.exists():
+                return Response({'error': 'No match found'}, status=status.HTTP_404_NOT_FOUND)
+        
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class ItemAlertListAPIView(generics.GenericAPIView):
     serializer_class = ItemDetailAlertSerializer
