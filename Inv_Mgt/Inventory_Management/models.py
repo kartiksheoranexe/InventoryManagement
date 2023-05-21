@@ -107,6 +107,11 @@ class Transaction(models.Model):
         ('failed', 'Failed'),
     ]
 
+    TRANSACTION_TYPE = [
+        ('added', 'Added'),
+        ('sold', 'Sold'),  
+    ]
+
     upi_details = models.ForeignKey(UpiDetails, on_delete=models.CASCADE)
     transaction_id = models.CharField(max_length=255, unique=True)
     transaction_ref_id = models.CharField(max_length=255, blank=True, null=True)
@@ -114,6 +119,7 @@ class Transaction(models.Model):
     item_id = models.IntegerField(default=0)
     unit = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=TRANSACTION_STATUS_CHOICES, default='pending')
+    type = models.CharField(max_length=20, choices=TRANSACTION_TYPE, default='sold')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
