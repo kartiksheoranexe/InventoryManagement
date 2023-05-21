@@ -858,6 +858,7 @@ class TopItemsAPIView(generics.ListAPIView):
         for item in items:
             units_sold = Transaction.objects.filter(
                 status='success', 
+                type='sold',
                 item_id=item.id,
                 created_at__year=current_year
             ).aggregate(Sum('unit'))['unit__sum'] or 0
