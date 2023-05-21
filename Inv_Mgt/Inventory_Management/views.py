@@ -1,6 +1,9 @@
 import json
 import base64
 import qrcode
+import cv2
+import pytesseract
+import numpy
 import pandas as pd
 from uuid import uuid4
 from io import BytesIO
@@ -76,7 +79,6 @@ class PasswordResetRequestCreateAPIView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         identifier = request.data['identifier']
-        print(identifier)
         user = CustomUser.objects.filter(username=identifier).first() or \
                CustomUser.objects.filter(email=identifier).first() or \
                CustomUser.objects.filter(phone_no=identifier).first()
@@ -291,7 +293,9 @@ class SearchSupplierAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        print("hello")
         user = self.request.user
+        print(user)
         business_name = self.request.data.get('business', None)
         queryset = Supplier.objects.none()
 
@@ -467,6 +471,36 @@ class ItemAlertCountAPIView(generics.GenericAPIView):
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
+class ItemDetailsUpdateDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        item_id = request.data.get('item_id', None)
+        identifier = request.data.get('identifier', None)
+        details = request.data.get('details', None)
+
+        if item_id is None or identifier is None:
+            raise ValidationError({'error': 'Missing required parameters: item_id, identifier'})
+
+        try:
+            item = ItemDetails.objects.get(id=item_id)
+        except ItemDetails.DoesNotExist:
+            raise ValidationError({'error': 'Invalid item_id'})
+
+        if identifier.upper() == 'E':
+            if details is None:
+                raise ValidationError({'error': 'Missing required parameters: details'})
+            serializer = ItemDetailsSerializer(item, data=details, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
+        elif identifier.upper() == 'D':
+            item.delete()
+            return Response({'success': 'Item deleted successfully'})
+        else:
+            raise ValidationError({'error': 'Invalid identifier. Must be either E or D'})
+        
 class CreateUpiDetailsAPIView(generics.CreateAPIView):
     queryset = UpiDetails.objects.all()
     serializer_class = UpiDetailsSerializer
@@ -564,6 +598,24 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
                 return Response(response_data, status=status.HTTP_200_OK)
 
             else:  # Item is being added
+                # Calculate the total price
+                total_price = item.price * abs(quantity_delta)
+                # Generate transaction_id and transaction_ref_id
+                transaction_id = f"txn-{uuid4()}"
+                transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
+
+                # Create a new transaction object
+                upi_details = UpiDetails.objects.get(user=request.user)
+                transaction = Transaction.objects.create(
+                    upi_details=upi_details,
+                    transaction_id=transaction_id,
+                    transaction_ref_id=transaction_ref_id,
+                    amount=total_price,
+                    item_id=item.id,
+                    unit=abs(quantity_delta),
+                    status='success',
+                    type='added'
+                )
                 response_data = {
                     "message": "Item quantity updated successfully.",
                     "updated_quantity": item.quantity,
@@ -611,7 +663,6 @@ class UpdateTransactionStatusAPIView(generics.UpdateAPIView):
                 return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Transaction statuses updated successfully."}, status=status.HTTP_200_OK)
-
 
 
 class ImportExcelDataAPIView(generics.CreateAPIView):
@@ -787,8 +838,6 @@ class SalesPerformanceAPIView(generics.ListAPIView):
         summary_data = self.get_queryset()
         return Response(summary_data)
 
-            
-
 
 class TopItemsAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -909,6 +958,7 @@ class CartItemListCreateAPIView(generics.ListCreateAPIView):
                 item_id=item.id,
                 unit=abs(quantity),
                 status='pending',
+                type='sold'
             )
 
             response_data = {
@@ -944,3 +994,29 @@ class CartItemRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
         except Exception as e:
             return Response({"message": "Item not deleted"}, status=status.HTTP_400_BAD_REQUEST)
 
+class CartItemCountAPIView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CartItemSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        user = request.user
+        cart = Cart.objects.get(user=user)
+        cart_items_count = CartItem.objects.filter(cart=cart).count()
+        if cart_items_count is None:
+            cart_items_count = 0
+        return Response({"items_count": cart_items_count})
+    
+
+from rest_framework.parsers import MultiPartParser, JSONParser
+class OCRAPIView(APIView):
+    parser_classes = (MultiPartParser, JSONParser)
+
+    def post(self, request, *args, **kwargs):
+        file = request.data['image']
+        image = cv2.imdecode(numpy.fromstring(file.read(), numpy.uint8), cv2.IMREAD_UNCHANGED)
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        import os
+        os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
+        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+        ocr_result = pytesseract.image_to_string(gray_image)
+        return Response({"text_detected": ocr_result})

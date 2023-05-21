@@ -3,7 +3,8 @@ from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, Lo
     SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, \
     SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, \
     UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView, CartItemListCreateAPIView, \
-    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView
+    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView, OCRAPIView, \
+    ItemDetailsUpdateDeleteView, CartItemCountAPIView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -27,6 +28,7 @@ urlpatterns = [
     path('search-items/', SearchItemDetailsAPIView.as_view()),
     path('raise-alert/', ItemAlertListAPIView.as_view()),
     path('alert-count/', ItemAlertCountAPIView.as_view()),
+    path('item/update_delete/', ItemDetailsUpdateDeleteView.as_view(), name='item_update_delete'),
     
     path('register-your-upi/', CreateUpiDetailsAPIView.as_view()),
     path('list_upi_details/', ListUPIDetails.as_view(), name='list_upi_details'),
@@ -34,8 +36,8 @@ urlpatterns = [
     path('generate-qr-code/', GenerateQRCodeAPIView.as_view()),
     path('modify-item-quantity/', UpdateItemQuantityAPIView.as_view()),
     path('update-transaction-status/', UpdateTransactionStatusAPIView.as_view()),
-
     path('transaction-details/', TransactionsByDateView.as_view()),
+    
     path('sales-performance/', SalesPerformanceAPIView.as_view()),
     path('top-items/', TopItemsAPIView.as_view(), name='top-items'),
 
@@ -43,6 +45,9 @@ urlpatterns = [
 
     path('cart/', CartItemListCreateAPIView.as_view(), name='cart-list-create'),
     path('cart/<int:pk>/', CartItemRetrieveUpdateDestroyAPIView.as_view(), name='cart-item-detail'),
+    path('cart-item-count/', CartItemCountAPIView.as_view(), name='cart-count-detail'),
+
+    path('ocr/', OCRAPIView.as_view(), name='ocr'),
 
 
 ]
