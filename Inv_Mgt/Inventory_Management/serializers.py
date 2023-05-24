@@ -3,7 +3,8 @@ from django.utils import timezone
 from datetime import date
 import math
 
-from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem
+from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem, \
+BusinessWorker
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -15,9 +16,24 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True}
         }
 
-def validate_username(self, value):
+    def validate_username(self, value):
         if ' ' in value:
             raise serializers.ValidationError("Username must not contain spaces.")
+        user = self.context['request'].user
+        if CustomUser.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
+
+    def validate_email(self, value):
+        user = self.context['request'].user
+        if CustomUser.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value
+
+    def validate_phone_no(self, value):
+        user = self.context['request'].user
+        if CustomUser.objects.exclude(pk=user.pk).filter(phone_no=value).exists():
+            raise serializers.ValidationError("This phone number is already registered.")
         return value
 
 class PasswordResetRequestSerializer(serializers.ModelSerializer):
@@ -107,3 +123,8 @@ class CartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['id', 'item', 'quantity']
+
+class BusinessWorkerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessWorker
+        fields = ['id', 'user', 'business']

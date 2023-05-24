@@ -4,7 +4,7 @@ from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, Lo
     SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, \
     UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView, CartItemListCreateAPIView, \
     CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView, OCRAPIView, \
-    ItemDetailsUpdateDeleteView, CartItemCountAPIView
+    ItemDetailsUpdateDeleteView, CartItemCountAPIView, CurrentUserAPIView, UpdateUserAPIView, BusinessWorkerCreateAPIView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -13,9 +13,12 @@ urlpatterns = [
     path('password-reset-request/', PasswordResetRequestCreateAPIView.as_view(), name='password_reset_request'),
     path('verify-otp/', VerifyOTPAPIView.as_view(), name='verify_otp'),
     path('password-reset/', ResetPasswordAPIView.as_view(), name='reset_password'),
+    path('user/', CurrentUserAPIView.as_view(), name='current_user'),
+    path('user/update/', UpdateUserAPIView.as_view(), name='update_user'),
 
     path('register_business/', BusinessCreateView.as_view(), name='register_business'),
     path('list_business/', ListBusiness.as_view(), name='list_business'),
+    path('register-worker/', BusinessWorkerCreateAPIView.as_view(), name='register-worker'),
 
     path('create_supplier/', SupplierCreateAPIView.as_view(), name='create_supplier'),
     path('update_supplier/', SupplierUpdateAPIView.as_view(), name='update_supplier'),

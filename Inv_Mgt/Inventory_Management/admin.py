@@ -1,5 +1,6 @@
 from django.contrib import admin
-from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, Cart, CartItem, PasswordResetRequest
+from Inventory_Management.models import CustomUser, Business, Supplier, ItemDetails, UpiDetails, Transaction, Cart, \
+CartItem, PasswordResetRequest, BusinessWorker
 
 # Register your models here.
 
@@ -15,7 +16,11 @@ class SupplierAdmin(admin.ModelAdmin):
 class ItemDetailsAdmin(admin.ModelAdmin):
     list_display = ['supplier', 'item_name', 'item_type', 'created_at']
 
+class BusinessWorkerAdmin(admin.ModelAdmin):
+    list_display = ['worker', 'business']
+
 admin.site.register(CustomUser, CustomUserAdmin),
+admin.site.register(BusinessWorker, BusinessWorkerAdmin),
 admin.site.register(Business, BusinessAdmin),
 admin.site.register(Supplier, SupplierAdmin),
 admin.site.register(ItemDetails, ItemDetailsAdmin),
