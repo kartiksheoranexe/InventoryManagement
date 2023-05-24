@@ -25,12 +25,18 @@ UNIT_CHOICES = [
         ('ml', 'Milliliter'),
 ]
 
+ROLE_CHOICES = [
+        ('owner', 'Owner'),
+        ('worker', 'Worker'),
+    ]
+
 class CustomUser(AbstractUser):
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     dob = models.DateField(null=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True)
     phone_no = PhoneField(help_text='Contact phone number', unique=True, null=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='worker')
 
     def __str__(self):
         return self.username
@@ -58,6 +64,13 @@ class Business(models.Model):
 
     def __str__(self):
         return self.owner.username + "-" + self.business_name
+
+class BusinessWorker(models.Model):
+    worker = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    business = models.ForeignKey(Business, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('worker', 'business')
 
 class Supplier(models.Model):
     business = models.ForeignKey(Business, on_delete=models.CASCADE)

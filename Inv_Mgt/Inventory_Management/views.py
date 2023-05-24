@@ -31,10 +31,14 @@ from rest_framework.response import Response
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 
-from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, Transaction, CartItem, Cart
-from Inventory_Management.serializers import CustomUserSerializer, PasswordResetRequestSerializer, BusinessSerializer, SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, UpiDetailsSerializer, TransactionDetailsSerializer, CartItemSerializer
+from Inventory_Management.models import CustomUser, PasswordResetRequest, Business, Supplier, ItemDetails, UpiDetails, \
+    Transaction, CartItem, Cart, BusinessWorker
+from Inventory_Management.serializers import CustomUserSerializer, PasswordResetRequestSerializer, BusinessSerializer, \
+    SupplierSerializer, ItemDetailsSerializer, ItemDetailsSearchSerializer, ItemDetailAlertSerializer, TransactionSerializer, \
+    UpiDetailsSerializer, TransactionDetailsSerializer, CartItemSerializer, BusinessWorkerSerializer
 
 
+# Create your views here.
 # Create your views here.
 class CustomUserCreateAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -50,7 +54,25 @@ class CustomUserCreateAPIView(generics.CreateAPIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return Response({"error": "Username, email, or phone number already in use"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+class CurrentUserAPIView(generics.RetrieveAPIView):
+    serializer_class = CustomUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+class UpdateUserAPIView(generics.UpdateAPIView):
+    serializer_class = CustomUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+    
+
 class LoginAPIView(APIView):
     def post(self, request):
         # Validate the login credentials
@@ -775,10 +797,9 @@ class SalesPerformanceAPIView(generics.ListAPIView):
             business = get_object_or_404(Business, business_name=business)
             suppliers = Supplier.objects.filter(business=business)
             items = ItemDetails.objects.filter(supplier__in=suppliers)
-            transactions = Transaction.objects.filter(status='success', created_at__gte=start_date, item_id__in=items)
+            transactions = Transaction.objects.filter(status='success', type='sold', created_at__gte=start_date, item_id__in=items)
         else:
-            transactions = Transaction.objects.filter(status='success', created_at__gte=start_date)
-    
+            transactions = Transaction.objects.filter(status='success', type='sold', created_at__gte=start_date)
         sales_data = []
         
         total_revenue = 0
@@ -1021,3 +1042,41 @@ class OCRAPIView(APIView):
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
         ocr_result = pytesseract.image_to_string(gray_image)
         return Response({"text_detected": ocr_result})
+
+
+class BusinessWorkerCreateAPIView(generics.CreateAPIView):
+    queryset = BusinessWorker.objects.all()
+    serializer_class = BusinessWorkerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        owner = request.user
+        if owner.role != 'owner':
+            return Response({"message": "You must be an owner to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+        worker_username = request.data.get('worker_username')
+        business_names = request.data.get('business_names')
+
+        try:
+            worker = CustomUser.objects.get(username=worker_username)
+        except CustomUser.DoesNotExist:
+            return Response({"message": "User does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the worker is not an owner
+        if worker.role != 'worker':
+            return Response({"message": "This user is not a worker."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the businesses exist and the user is the owner
+        for business_name in business_names:
+            try:
+                business = Business.objects.get(business_name=business_name)
+                if business.owner != owner:
+                    return Response({"message": "You are not the owner of this business."}, status=status.HTTP_403_FORBIDDEN)
+            except Business.DoesNotExist:
+                return Response({"message": "Business does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        for business_name in business_names:
+            business = Business.objects.get(business_name=business_name)
+            BusinessWorker.objects.create(worker=worker, business=business)
+
+        return Response({"message": "Business worker created successfully."}, status=status.HTTP_201_CREATED)
