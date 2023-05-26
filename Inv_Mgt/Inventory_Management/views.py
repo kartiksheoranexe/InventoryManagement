@@ -39,7 +39,6 @@ from Inventory_Management.serializers import CustomUserSerializer, PasswordReset
 
 
 # Create your views here.
-# Create your views here.
 class CustomUserCreateAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
@@ -51,6 +50,7 @@ class CustomUserCreateAPIView(generics.CreateAPIView):
             user = serializer.save()
             user.set_password(request.data['password'])
             user.save()
+            Cart.objects.create(user=user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return Response({"error": "Username, email, or phone number already in use"}, status=status.HTTP_400_BAD_REQUEST)
@@ -191,7 +191,11 @@ class ListBusiness(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         if user:
-            return Business.objects.filter(owner=user)
+            if user.role == 'worker':
+                worker_business = BusinessWorker.objects.filter(worker=user)
+                return [association.business for association in worker_business]
+            else:
+                return Business.objects.filter(owner=user)
         else:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
@@ -277,10 +281,16 @@ class ListBusinessSuppliers(generics.ListAPIView):
         user = self.request.user
         business_name = request.query_params.get('business')
         if user and business_name:
-            business = Business.objects.get(owner=user, business_name=business_name)
-            supplier = Supplier.objects.filter(business=business)
-            serializer = SupplierSerializer(supplier, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            try:
+                business = Business.objects.get(business_name=business_name)
+            except Business.DoesNotExist:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            if business.owner == user or BusinessWorker.objects.filter(worker=user, business=business).exists():
+                supplier = Supplier.objects.filter(business=business)
+                serializer = SupplierSerializer(supplier, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(status=status.HTTP_403_FORBIDDEN)
         else:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
 
@@ -315,15 +325,17 @@ class SearchSupplierAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        print("hello")
         user = self.request.user
-        print(user)
         business_name = self.request.data.get('business', None)
         queryset = Supplier.objects.none()
 
         if user and business_name:
-            business = Business.objects.filter(owner=user, business_name=business_name).first()
-            if business:
+            try:
+                business = Business.objects.get(business_name=business_name)
+            except Business.DoesNotExist:
+                return queryset
+
+            if business.owner == user or BusinessWorker.objects.filter(worker=user, business=business).exists():
                 queryset = Supplier.objects.filter(business=business)
                 search_query = self.request.data.get('search', None)
                 if search_query:
@@ -351,15 +363,22 @@ class ItemDetailsListAPIView(generics.ListAPIView):
         distributor_name = request.data.get('distributor_name')
 
         try:
-            business = Business.objects.get(owner=request.user, business_name=business_name)
-            supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
-            queryset = ItemDetails.objects.filter(supplier=supplier)
+            business = Business.objects.get(business_name=business_name)
+        except Business.DoesNotExist:
+            return Response({"error": "Business does not exist!"}, status=status.HTTP_400_BAD_REQUEST)
 
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+        if business.owner == request.user or BusinessWorker.objects.filter(worker=request.user, business=business).exists():
+            try:
+                supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
+                queryset = ItemDetails.objects.filter(supplier=supplier)
 
-        except (Business.DoesNotExist, Supplier.DoesNotExist):
-            return Response({"error": "Business Or Supplier does not exist!"}, status=status.HTTP_400_BAD_REQUEST)
+                serializer = self.get_serializer(queryset, many=True)
+                return Response(serializer.data)
+
+            except Supplier.DoesNotExist:
+                return Response({"error": "Supplier does not exist!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"error": "Business Or Supplier does not exist!"}, status=status.HTTP_400_BAD_REQUEST)
 
 class ItemDetailsCreateAPIView(generics.CreateAPIView):
     queryset = ItemDetails.objects.all()
@@ -395,31 +414,29 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
         business_name = self.request.query_params.get('business_name', None)
         item_name = self.request.query_params.get('item_name', None)
 
-        if business_name:
-            user_business = Business.objects.filter(owner=self.request.user, business_name=business_name)
-        else:
-            user_business = Business.objects.filter(owner=self.request.user)
+        businesses = Business.objects.filter(Q(owner=self.request.user) | Q(businessworker__worker=self.request.user))
 
+        if business_name:
+            businesses = businesses.filter(business_name=business_name)
+            if not businesses.exists():
+                return ItemDetails.objects.none()
+
+        queryset = ItemDetails.objects.filter(supplier__business__in=businesses)
+        
         if item_name and item_name.isdigit():
-            # If the item_name is an integer, try to get ItemDetails by id
             try:
-                item = ItemDetails.objects.get(id=item_name, supplier__business__in=user_business)
-                print(item)
+                item = ItemDetails.objects.get(id=item_name, supplier__business__in=businesses)
                 return [item,]  # Return a list containing the item
             except ItemDetails.DoesNotExist:
-                pass  # If no such ItemDetails, proceed with the current functionality
-
-        queryset = ItemDetails.objects.filter(supplier__business__in=user_business)
+                pass
 
         category = self.request.query_params.get('category', None)
         distributor_name = self.request.query_params.get('distributor_name', None)
 
         if category is not None:
             queryset = queryset.filter(supplier__category__icontains=category)
-
         if distributor_name is not None:
             queryset = queryset.filter(supplier__distributor_name__icontains=distributor_name)
-
         if item_name is not None:
             queryset = queryset.filter(item_name__icontains=item_name)
 
@@ -427,7 +444,7 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
             queryset = ItemDetails.objects.none()
 
         return queryset
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         if isinstance(queryset, list):
@@ -436,10 +453,10 @@ class SearchItemDetailsAPIView(generics.ListAPIView):
         else:
             if not queryset.exists():
                 return Response({'error': 'No match found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
+    
 
 class ItemAlertListAPIView(generics.GenericAPIView):
     serializer_class = ItemDetailAlertSerializer
@@ -450,7 +467,7 @@ class ItemAlertListAPIView(generics.GenericAPIView):
         business_name = request.data.get('business_name')
 
         try:
-            business = Business.objects.get(owner=user, business_name=business_name)
+            business = Business.objects.get(Q(owner=user) | Q(businessworker__worker=user), business_name=business_name)
             suppliers = Supplier.objects.filter(business=business)
 
             alert_items = []
@@ -478,7 +495,7 @@ class ItemAlertCountAPIView(generics.GenericAPIView):
         business_name = request.data.get('business_name')
 
         try:
-            business = Business.objects.get(owner=user, business_name=business_name)
+            business = Business.objects.get(Q(owner=user) | Q(businessworker__worker=user), business_name=business_name)
             suppliers = Supplier.objects.filter(business=business)
 
             alert_items_count = 0
@@ -492,6 +509,7 @@ class ItemAlertCountAPIView(generics.GenericAPIView):
         except Exception as e:
             response_data = {"message": str(e)}
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ItemDetailsUpdateDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -543,8 +561,10 @@ class GenerateQRCodeAPIView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         price = request.data.get('price')
-
-        upi_details = UpiDetails.objects.get(user=request.user)
+        
+        user = request.user
+        business = Business.objects.filter(Q(owner=user) | Q(businessworker__worker=user)).first()
+        upi_details = UpiDetails.objects.get(user=business.owner)
         payee_name = quote(upi_details.payee_name)
 
         # Generate the UPI QR code
@@ -580,9 +600,14 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
 
         try:
             user = request.user
-            business = Business.objects.get(owner=user, business_name=business_name)
+            business = Business.objects.get(Q(owner=user, business_name=business_name) | Q(businessworker__worker=user, business_name=business_name))
             supplier = Supplier.objects.get(business=business, category=category, distributor_name=distributor_name)
             items = ItemDetails.objects.filter(supplier=supplier, item_name=item_name, item_type=item_type, size=size, unit_of_measurement=uom)
+            
+            # Check if the user is a worker and tries to add items
+            if quantity_delta > 0 and business.owner != user:
+                return Response({"message": "Workers are not permitted to add items."}, status=status.HTTP_403_FORBIDDEN)
+
             if additional_info:
                 match_found = False
                 for item in items:
@@ -627,9 +652,10 @@ class UpdateItemQuantityAPIView(generics.UpdateAPIView):
                 transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
 
                 # Create a new transaction object
-                upi_details = UpiDetails.objects.get(user=request.user)
+                upi_details = UpiDetails.objects.get(user=business.owner)
                 transaction = Transaction.objects.create(
                     upi_details=upi_details,
+                    transaction_made_by=request.user,
                     transaction_id=transaction_id,
                     transaction_ref_id=transaction_ref_id,
                     amount=total_price,
@@ -768,7 +794,7 @@ class TransactionsByDateView(generics.ListAPIView):
 
         if business_name:
             user = self.request.user
-            business = Business.objects.get(owner=user, business_name=business_name)
+            business = Business.objects.get(Q(owner=user) | Q(businessworker__worker=user), business_name=business_name)
             item_ids = ItemDetails.objects.filter(supplier__business=business).values('id')
             queryset = queryset.filter(item_id__in=Subquery(item_ids))
 
@@ -971,9 +997,11 @@ class CartItemListCreateAPIView(generics.ListCreateAPIView):
             transaction_ref_id = f"tr-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{uuid4()}"
 
             # Create a new transaction object
-            upi_details = UpiDetails.objects.get(user=request.user)
+            business = Business.objects.filter(Q(owner=user) | Q(businessworker__worker=user)).first()
+            upi_details = UpiDetails.objects.get(user=business.owner)
             transaction = Transaction.objects.create(
                 upi_details=upi_details,
+                transaction_made_by=request.user,
                 transaction_id=transaction_id,
                 transaction_ref_id=transaction_ref_id,
                 amount=total_price,
