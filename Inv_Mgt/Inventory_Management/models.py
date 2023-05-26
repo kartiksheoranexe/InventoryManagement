@@ -133,6 +133,7 @@ class Transaction(models.Model):
     unit = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=TRANSACTION_STATUS_CHOICES, default='pending')
     type = models.CharField(max_length=20, choices=TRANSACTION_TYPE, default='sold')
+    transaction_made_by = models.ForeignKey(CustomUser, related_name='transactions', on_delete=models.CASCADE, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

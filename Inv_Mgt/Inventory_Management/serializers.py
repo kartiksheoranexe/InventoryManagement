@@ -93,6 +93,7 @@ class UpiDetailsSerializer(serializers.ModelSerializer):
         fields = ['payee_vpa', 'payee_name', 'merchant_code', 'url']
 
 class TransactionSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Transaction
         fields = [
@@ -103,10 +104,11 @@ class TransactionSerializer(serializers.ModelSerializer):
 class TransactionDetailsSerializer(serializers.ModelSerializer):
     time = serializers.SerializerMethodField()
     item_details = serializers.SerializerMethodField()
-
+    transaction_made_by = serializers.CharField(source='transaction_made_by.username', read_only=True, allow_null=True)
+    
     class Meta:
         model = Transaction
-        fields = ('time', 'unit', 'amount', 'status', 'type', 'transaction_id', 'item_details')
+        fields = ('time', 'unit', 'amount', 'status', 'type', 'transaction_id', 'transaction_made_by', 'item_details')
         depth = 1
 
     def get_time(self, obj):
