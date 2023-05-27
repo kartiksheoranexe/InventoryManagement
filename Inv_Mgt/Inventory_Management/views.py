@@ -180,6 +180,8 @@ class BusinessCreateView(generics.CreateAPIView):
         try:
             user = self.request.user
             data = serializer.save(owner=user)
+            user.role = 'owner'
+            user.save()
             return Response("Successfully registered!", data, status=status.HTTP_201_CREATED)
         except:
             return Response(status=status.HTTP_400_BAD_REQUEST)
