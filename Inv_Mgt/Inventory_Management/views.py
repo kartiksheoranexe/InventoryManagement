@@ -1,8 +1,8 @@
 import json
 import base64
 import qrcode
-import cv2
-import pytesseract
+# import cv2
+# import pytesseract
 import numpy
 import pandas as pd
 from uuid import uuid4
@@ -1059,19 +1059,19 @@ class CartItemCountAPIView(generics.RetrieveAPIView):
         return Response({"items_count": cart_items_count})
     
 
-from rest_framework.parsers import MultiPartParser, JSONParser
-class OCRAPIView(APIView):
-    parser_classes = (MultiPartParser, JSONParser)
+# from rest_framework.parsers import MultiPartParser, JSONParser
+# class OCRAPIView(APIView):
+#     parser_classes = (MultiPartParser, JSONParser)
 
-    def post(self, request, *args, **kwargs):
-        file = request.data['image']
-        image = cv2.imdecode(numpy.fromstring(file.read(), numpy.uint8), cv2.IMREAD_UNCHANGED)
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        import os
-        os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-        ocr_result = pytesseract.image_to_string(gray_image)
-        return Response({"text_detected": ocr_result})
+#     def post(self, request, *args, **kwargs):
+#         file = request.data['image']
+#         image = cv2.imdecode(numpy.fromstring(file.read(), numpy.uint8), cv2.IMREAD_UNCHANGED)
+#         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#         import os
+#         os.environ['TESSDATA_PREFIX'] = r'C:\Program Files\Tesseract-OCR\tessdata'
+#         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+#         ocr_result = pytesseract.image_to_string(gray_image)
+#         return Response({"text_detected": ocr_result})
 
 
 class BusinessWorkerCreateAPIView(generics.CreateAPIView):
@@ -1110,3 +1110,10 @@ class BusinessWorkerCreateAPIView(generics.CreateAPIView):
             BusinessWorker.objects.create(worker=worker, business=business)
 
         return Response({"message": "Business worker created successfully."}, status=status.HTTP_201_CREATED)
+    
+
+
+class HelloWorldView(APIView):
+    def get(self, request):
+        print("hello!!!!!!world!!!!")
+        return Response("Hello World")
