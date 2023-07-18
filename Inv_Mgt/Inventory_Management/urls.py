@@ -3,8 +3,8 @@ from Inventory_Management.views import CustomUserCreateAPIView, LoginAPIView, Lo
     SupplierUpdateAPIView, SupplierDeleteAPIView, ListBusinessSuppliers, SearchSupplierAPIView, ItemDetailsListAPIView, ItemDetailsCreateAPIView, \
     SearchItemDetailsAPIView, ItemAlertListAPIView, ItemAlertCountAPIView, GenerateQRCodeAPIView, UpdateItemQuantityAPIView, ImportExcelDataAPIView, \
     UpdateTransactionStatusAPIView, CreateUpiDetailsAPIView, TransactionsByDateView, SalesPerformanceAPIView, TopItemsAPIView, CartItemListCreateAPIView, \
-    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView, OCRAPIView, \
-    ItemDetailsUpdateDeleteView, CartItemCountAPIView, CurrentUserAPIView, UpdateUserAPIView, BusinessWorkerCreateAPIView
+    CartItemRetrieveUpdateDestroyAPIView,ListUPIDetails,UPIDeleteAPIView, PasswordResetRequestCreateAPIView, VerifyOTPAPIView, ResetPasswordAPIView, \
+    ItemDetailsUpdateDeleteView, CartItemCountAPIView, CurrentUserAPIView, UpdateUserAPIView, BusinessWorkerCreateAPIView, HelloWorldView
 
 urlpatterns = [
     path('register-user/', CustomUserCreateAPIView.as_view(), name='register'),
@@ -50,7 +50,8 @@ urlpatterns = [
     path('cart/<int:pk>/', CartItemRetrieveUpdateDestroyAPIView.as_view(), name='cart-item-detail'),
     path('cart-item-count/', CartItemCountAPIView.as_view(), name='cart-count-detail'),
 
-    path('ocr/', OCRAPIView.as_view(), name='ocr'),
+    # path('ocr/', OCRAPIView.as_view(), name='ocr'),
+    path('hello/', HelloWorldView.as_view(), name='hello'),
 
 
 ]
