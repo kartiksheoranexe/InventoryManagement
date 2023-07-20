@@ -42,4 +42,4 @@ jobs:
         pip install -r Inv_Mgt/requirements.txt
     - name: Run Tests
       run: |
-        python manage.py test
+        python Inv_Mgt/manage.py test
