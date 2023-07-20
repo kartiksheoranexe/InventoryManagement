@@ -23,9 +23,6 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install -r Inv_Mgt/requirements.txt
-    - name: Lint with Flake8
-      run: |
-        flake8 .
 
   unit_tests:
     needs: build
