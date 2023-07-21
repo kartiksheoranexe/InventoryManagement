@@ -23,4 +23,4 @@ jobs:
         script: |
           sudo docker pull kartiksheoran1/inven-app:v3
           cd /home/ubuntu
-          sudo docker-compose up
+          sudo docker-compose up -d 
