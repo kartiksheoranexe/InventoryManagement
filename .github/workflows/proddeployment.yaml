@@ -19,6 +19,7 @@ jobs:
         host: ${{ secrets.REMOTE_HOST }}
         username: ${{ secrets.REMOTE_USERNAME }}
         key: ${{ secrets.REMOTE_SSH_KEY }}
+        passphrase: ${{ secrets.SSH_KEY_PASSPHRASE }}
         script: |
           sudo docker pull kartiksheoran1/inven-app:v3
           cd /home/ubuntu
