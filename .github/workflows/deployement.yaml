@@ -25,4 +25,4 @@ jobs:
         with: 
           file: ./Dockerfile
           push: true
-          tags: kartiksheoran1/inven-app:version4
+          tags: kartiksheoran1/inven-app:v3
