@@ -96,7 +96,8 @@ DATABASES = {
         'NAME': 'invenpostgdb',
         'USER': 'invenpostgdb',
         'PASSWORD': 'root',
-        'HOST': 'db',  # This should be the same as the service name for PostgreSQL in docker-compose.yml
+        # 'HOST': 'db',  # This should be the same as the service name for PostgreSQL in docker-compose.yml
+        'HOST': 'db-app',  # The name of your Kubernetes service for PostgreSQL
         'PORT': '5432',
     }
 }
