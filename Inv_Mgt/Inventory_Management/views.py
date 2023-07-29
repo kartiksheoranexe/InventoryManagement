@@ -1116,4 +1116,4 @@ class BusinessWorkerCreateAPIView(generics.CreateAPIView):
 class HelloWorldView(APIView):
     def get(self, request):
         print("hello!!!!!!world!!!!")
-        return Response("Hello World")
+        return Response("Hello World <3")

@@ -93,11 +93,11 @@ WSGI_APPLICATION = 'Inv_Mgt.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'invenpostgdb',
-        'USER': 'invenpostgdb',
+        'NAME': 'postgres',
+        'USER': 'postgres',
         'PASSWORD': 'root',
         # 'HOST': 'db',  # This should be the same as the service name for PostgreSQL in docker-compose.yml
-        'HOST': 'db-pod-service',  # The name of your Kubernetes service for PostgreSQL
+        'HOST': 'db-pod-service.default.svc.cluster.local',  # The name of your Kubernetes service for PostgreSQL
         'PORT': '5432',
     }
 }
