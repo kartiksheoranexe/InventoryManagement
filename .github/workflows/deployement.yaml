@@ -63,7 +63,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t kartiksheoran1/inven-app:$IMAGE_TAG
+          docker build -t kartiksheoran1/inven-app:$IMAGE_TAG .
           docker push kartiksheoran1/inven-app:$IMAGE_TAG
           echo "::set-output name=image::kartiksheoran1/inven-app:$IMAGE_TAG"
 
