@@ -66,5 +66,17 @@ jobs:
           docker build -t kartiksheoran1/inven-app:$IMAGE_TAG .
           docker push kartiksheoran1/inven-app:$IMAGE_TAG
           echo "::set-output name=image::kartiksheoran1/inven-app:$IMAGE_TAG"
+      
+      - name: Install Kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set Kubectl AWS context
+        run: aws eks update-kubeconfig --name inver --region ${{ secrets.AWS_REGION }}
+      
+      - name: Deploy image to Amazon EKS
+        run: |
+          kubectl set image deployement/inven-dep inven-deployment-container=${{ steps.build-image.outputs.image }}
+      
+
 
       
