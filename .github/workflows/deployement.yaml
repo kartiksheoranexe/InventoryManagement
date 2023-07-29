@@ -75,7 +75,7 @@ jobs:
       
       - name: Deploy image to Amazon EKS
         run: |
-          kubectl set image deployment/inven-dep inven-deployment-container=${{ steps.build-image.outputs.image }}
+          kubectl set image deployment/inven-deployment inven-deployment-container=${{ steps.build-image.outputs.image }}
       
 
 
